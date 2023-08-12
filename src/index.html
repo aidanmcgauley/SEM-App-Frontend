@@ -5,9 +5,9 @@
 
 <script type="text/javascript">
 
-let maxminURL = "http://localhost:8001/";
+let maxminURL = "http://sem-maxmin-40058902.40058902.qpc.hal.davecutting.uk/";
 let sortedURL = "http://localhost:8002/";
-let totalHoursURL = "http://localhost:8003/";
+let totalHoursURL = "http://sem-totalhours-40058902.40058902.qpc.hal.davecutting.uk/";
 let engagementScoreURL = "http://localhost:8004/";
 let riskFailureURL = "http://localhost:8005/";
 let sortedByPercentageURL = "https://us-east1-radiant-destiny-392018.cloudfunctions.net/sortbypercentage";
@@ -22,8 +22,8 @@ function displayTotal(total_attendance)
 }
 
 function displayMaxMin(max_attendance_items, min_attendance_items) {
-    let max_text = 'Maximum attendance = ';
-    let min_text = 'Minimum attendance = ';
+    let max_text = 'Maximum attendance(s) = ';
+    let min_text = 'Minimum attendance(s) = ';
 
     // Handling multiple maximum attendance items
     max_attendance_items.forEach((item, index) => {
