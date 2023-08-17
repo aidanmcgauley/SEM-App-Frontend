@@ -5,16 +5,22 @@
 
 <script type="text/javascript">
 
-let maxminURL = 'http://sem-maxmin.40058902.qpc.hal.davecutting.uk/';
-let sortedURL = 'http://sem-sort.40058902.qpc.hal.davecutting.uk/';
-let totalHoursURL = 'http://sem-totalhours.40058902.qpc.hal.davecutting.uk/';
-let engagementScoreURL = 'http://sem-engagementscore.40058902.qpc.hal.davecutting.uk/';
-let riskFailureURL = 'http://sem-riskfailure.40058902.qpc.hal.davecutting.uk/';
-let sortedByPercentageURL = 'http://sem-sortbypercentage.40058902.qpc.hal.davecutting.uk/';
+// Single URL
+//let proxyBaseURL = 'http://127.0.0.1:3000/';
 
-//let maxminURL = "http://semmaxmin.esha.qpc.hal.davecutting.uk/";
-//let sortedURL = "http://semsort.esha.qpc.hal.davecutting.uk/";
+// Multiple URL's
+let proxyBaseURLs = ['http://127.0.0.1:3000/', 'http://127.0.0.1:3001/', 'http://127.0.0.1:3002/'];
 
+// Round robin load balancing approach
+let currentIndex = 0;
+function getNextURL() {
+  const url = proxyBaseURLs[currentIndex];
+  currentIndex = (currentIndex + 1) % proxyBaseURLs.length; // Modulo ensures it always goes back to 0
+  return url;
+}
+
+
+// FUNCTIONS FOR DISPLAYING OUTPUT TO 'output-text' box
 function displayTotal(total_attendance)
 {
     document.getElementById('output-text').value = 'Total Attendance (in hours) = ' + total_attendance + ' hours';
@@ -71,6 +77,7 @@ function displaySortedByPercentage(sorted_by_percentage) {
     document.getElementById('output-text').value = outputText;
 }
 
+// Clearing output-text box
 function clearText()
 {
     document.getElementById('attendance_1').value = '';
@@ -80,181 +87,430 @@ function clearText()
     document.getElementById('output-text').value = '';
 }
 
+
+// Functions to send requests to backend functions, and handle the responses
 function getSortedByPercentage() 
 {
-    let item_1 = document.getElementById('item_1').value;
-    let item_2 = document.getElementById('item_2').value;
-    let item_3 = document.getElementById('item_3').value;
-    let item_4 = document.getElementById('item_4').value;
+    let tryCount = 0;
 
-    let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
-    let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
-    let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
-    let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
+    function tryRequest() {
+        if (tryCount >= proxyBaseURLs.length) {
+            alert('All servers are down. Please try again later.');
+            return;
+        }
 
-    let attendance_1 = document.getElementById('attendance_1').value;
-    let attendance_2 = document.getElementById('attendance_2').value;
-    let attendance_3 = document.getElementById('attendance_3').value;
-    let attendance_4 = document.getElementById('attendance_4').value;
+        let sortedByPercentageURL = getNextURL() + 'sortedByPercentage';
+        let item_1 = document.getElementById('item_1').value;
+        let item_2 = document.getElementById('item_2').value;
+        let item_3 = document.getElementById('item_3').value;
+        let item_4 = document.getElementById('item_4').value;
 
-    let xhttp = new XMLHttpRequest();
+        let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
+        let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
+        let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
+        let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
 
-    xhttp.onload = function () {
-        if (xhttp.status >= 200 && xhttp.status < 300) {
-            // Handle success here
-            var j = JSON.parse(this.response);
-            console.log("Server response:", this.response);
-            if (j.error) {
+        let attendance_1 = document.getElementById('attendance_1').value;
+        let attendance_2 = document.getElementById('attendance_2').value;
+        let attendance_3 = document.getElementById('attendance_3').value;
+        let attendance_4 = document.getElementById('attendance_4').value;
+
+        let xhttp = new XMLHttpRequest();
+
+        xhttp.onload = function () {
+            if (xhttp.status >= 200 && xhttp.status < 300) {
+                // Handle success here
+                var j = JSON.parse(this.response);
+                console.log("Server response:", this.response);
+                if (j.error) {
                     alert(j.message); // Show the error message as an alert
                 } else {
                     let sorted_by_percentage = j.sorted_by_percentage;
                     displaySortedByPercentage(sorted_by_percentage);
                 }
-            
-        } else if (xhttp.status >= 400 && xhttp.status < 500) {
-            // Client errors
-            alert('There was a problem with the request. Please check your input and try again.');
-        } else if (xhttp.status >= 500) {
-            // Server errors
-            alert('The server encountered a problem. Please try again later.');
-        }
-    };
+                
+            // This code will alert user if there is a client error, but retry if there's a server error.
+            } else if (xhttp.status >= 400 && xhttp.status < 500) {
+                // Client errors
+                alert('There was a problem with the request. Please check your input and try again.');
+            } else if (xhttp.status >= 500) {
+                // Server errors
+                tryCount++;
+                tryRequest(); // retry with the next URL
+            }
+        };
 
-    xhttp.onerror = function() {
-        alert('Request failed due to a network error.');
-    };
-    xhttp.ontimeout = function() {
-        alert('Request timed out.');
-    };
+        xhttp.onerror = function() {
+            tryCount++;
+            tryRequest(); // retry with the next URL
+            //alert('Request failed due to a network error.');
+        };
+        xhttp.ontimeout = function() {
+            tryCount++;
+            tryRequest(); // retry with the next URL
+            //alert('Request timed out.'); 
+        };
 
-    xhttp.open("GET", sortedByPercentageURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&total_hours_1=" + total_hours_1
-        + "&item_2=" + item_2 + "&attendance_2=" + attendance_2 + "&total_hours_2=" + total_hours_2
-        + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&total_hours_3=" + total_hours_3
-        + "&item_4=" + item_4 + "&attendance_4=" + attendance_4 + "&total_hours_4=" + total_hours_4);
-    xhttp.send();
-    return;
+        xhttp.open("GET", sortedByPercentageURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&total_hours_1=" + total_hours_1
+            + "&item_2=" + item_2 + "&attendance_2=" + attendance_2 + "&total_hours_2=" + total_hours_2
+            + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&total_hours_3=" + total_hours_3
+            + "&item_4=" + item_4 + "&attendance_4=" + attendance_4 + "&total_hours_4=" + total_hours_4);
+        xhttp.send();
+    }
+    tryRequest();
 }
 
 
 function getRisk()
 {
-    let item_1 = document.getElementById('item_1').value;
-    let item_2 = document.getElementById('item_2').value;
-    let item_3 = document.getElementById('item_3').value;
-    let item_4 = document.getElementById('item_4').value;
+    let tryCount = 0;
 
-    let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
-    let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
-    let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
-    let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
+    let engagementScoreURL = proxyBaseURLs[tryCount] + 'engagementScore';
+    let riskFailureURL = proxyBaseURLs[tryCount] + 'riskFailure';
 
-    let attendance_1 = document.getElementById('attendance_1').value;
-    let attendance_2 = document.getElementById('attendance_2').value;
-    let attendance_3 = document.getElementById('attendance_3').value;
-    let attendance_4 = document.getElementById('attendance_4').value;
-    let cut_off_score = document.getElementById('cut-off').value;
-
-    // first, get the engagement score
-    let xhttp = new XMLHttpRequest();
-    xhttp.onload = function() {
-        if (xhttp.status >= 200 && xhttp.status < 300) {
-            let j = JSON.parse(xhttp.response);
-            if (j.error) {
-                alert(j.message); // Show the specific error message from the Java backend
-                return; // Do not proceed with the second request
-            }
-            let engagement_score = j.engagement_score;
-
-            // now that we have the engagement score, call getRisk
-            let xhttp2 = new XMLHttpRequest();
-            xhttp2.onload = function() {
-                if (xhttp2.status >= 200 && xhttp2.status < 300) {
-                    let j2 = JSON.parse(xhttp2.response);
-                    if (j2.error) {
-                        alert(j2.error); // Show the specific error message from the server
-                    } else {
-                        let risk = j2.risk;
-                        let engagement_score = j2.engagement_score;
-                        let cut_off_score = j2.cut_off_score;
-                        displayRisk(risk, engagement_score, cut_off_score);
-                    }
-                    
-                } else if (xhttp2.status === 400) {
-                    // Handle 400 status code
-                    let j2 = JSON.parse(xhttp2.response);
-                    if (j2.error) {
-                        alert(j2.error); // Show the specific error message from the server
-                    } else {
-                        alert('Unknown error occurred. Please try again.');
-                    }
-                } else if (xhttp2.status >= 500) {
-                    alert('The server encountered a problem. Please try again later.');
-                }
-            };
-            xhttp2.onerror = function() {
-                alert('Request failed due to a network error.');
-            };
-            xhttp2.ontimeout = function() {
-                alert('Request timed out.');
-            };
-            xhttp2.open("GET", riskFailureURL + "?engagement_score=" + engagement_score + "&cut_off_score=" + cut_off_score);
-            xhttp2.send();
-
-        } else if (xhttp.status >= 400 && xhttp.status < 500) {
-            alert('There was a problem with the request. Please check your input and try again.');
-        } else if (xhttp.status >= 500) {
-            alert('The server encountered a problem. Please try again later.');
+    function tryRequest() {
+        if (tryCount >= proxyBaseURLs.length) {
+            alert('All servers are down. Please try again later.');
+            return;
         }
-    };
 
-    xhttp.onerror = function() {
-        alert('Request failed due to a network error.');
-    };
-    xhttp.ontimeout = function() {
-        alert('Request timed out.');
-    };
+        engagementScoreURL = proxyBaseURLs[tryCount] + 'engagementScore';
+        riskFailureURL = proxyBaseURLs[tryCount] + 'riskFailure';
 
-    xhttp.open("GET", engagementScoreURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&total_hours_1=" + total_hours_1
-        + "&item_2=" + item_2 + "&attendance_2=" + attendance_2 + "&total_hours_2=" + total_hours_2
-        + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&total_hours_3=" + total_hours_3
-        + "&item_4=" + item_4 + "&attendance_4=" + attendance_4 + "&total_hours_4=" + total_hours_4);
-    xhttp.send();
-    return;
+        let item_1 = document.getElementById('item_1').value;
+        let item_2 = document.getElementById('item_2').value;
+        let item_3 = document.getElementById('item_3').value;
+        let item_4 = document.getElementById('item_4').value;
+
+        let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
+        let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
+        let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
+        let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
+
+        let attendance_1 = document.getElementById('attendance_1').value;
+        let attendance_2 = document.getElementById('attendance_2').value;
+        let attendance_3 = document.getElementById('attendance_3').value;
+        let attendance_4 = document.getElementById('attendance_4').value;
+        let cut_off_score = document.getElementById('cut-off').value;
+
+        // first, get the engagement score
+        let xhttp = new XMLHttpRequest();
+        xhttp.onload = function() {
+            if (xhttp.status >= 200 && xhttp.status < 300) {
+                let j = JSON.parse(xhttp.response);
+                if (j.error) {
+                    alert(j.message); // Show the specific error message from the Java backend
+                    return; // Do not proceed with the second request
+                }
+                let engagement_score = j.engagement_score;
+
+                // now that we have the engagement score, call getRisk
+                let xhttp2 = new XMLHttpRequest();
+                xhttp2.onload = function() {
+                    if (xhttp2.status >= 200 && xhttp2.status < 300) {
+                        let j2 = JSON.parse(xhttp2.response);
+                        if (j2.error) {
+                            alert(j2.error); // Show the specific error message from the server
+                        } else {
+                            let risk = j2.risk;
+                            let engagement_score = j2.engagement_score;
+                            let cut_off_score = j2.cut_off_score;
+                            displayRisk(risk, engagement_score, cut_off_score);
+                        }
+                        
+                    } else if (xhttp2.status === 400) {
+                        // Handle 400 status code
+                        let j2 = JSON.parse(xhttp2.response);
+                        if (j2.error) {
+                            alert(j2.error); // Show the specific error message from the server
+                        } else {
+                            alert('Unknown error occurred. Please try again.');
+                        }
+                    } else if (xhttp2.status >= 500) {
+                        tryRequest();
+                    }
+                };
+                xhttp2.onerror = function() {
+                    tryCount++;
+                    tryRequest(); // Retry with the next URL
+                };
+                xhttp2.ontimeout = function() {
+                    tryCount++;
+                    tryRequest(); // Retry with the next URL
+                };
+                xhttp2.open("GET", riskFailureURL + "?engagement_score=" + engagement_score + "&cut_off_score=" + cut_off_score);
+                xhttp2.send();
+
+            } else if (xhttp.status >= 400 && xhttp.status < 500) {
+                alert('There was a problem with the request. Please check your input and try again.');
+            } else if (xhttp.status >= 500) {
+                tryCount++;
+                tryRequest(); // retry with the next URL
+            }
+        };
+
+        xhttp.onerror = function() {
+            tryCount++;
+            tryRequest(); // retry with the next URL
+        };
+        xhttp.ontimeout = function() {
+            tryCount++;
+            tryRequest(); // retry with the next URL
+        };
+
+        xhttp.open("GET", engagementScoreURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&total_hours_1=" + total_hours_1
+            + "&item_2=" + item_2 + "&attendance_2=" + attendance_2 + "&total_hours_2=" + total_hours_2
+            + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&total_hours_3=" + total_hours_3
+            + "&item_4=" + item_4 + "&attendance_4=" + attendance_4 + "&total_hours_4=" + total_hours_4);
+        xhttp.send();
+    }
+    tryRequest();
 }
 
 
 function getEngagementScore()
 {
-    let item_1 = document.getElementById('item_1').value;
-    let item_2 = document.getElementById('item_2').value;
-    let item_3 = document.getElementById('item_3').value;
-    let item_4 = document.getElementById('item_4').value;
+    let tryCount = 0;
 
-    let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
-    let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
-    let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
-    let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
+    function tryRequest() {
+        if (tryCount >= proxyBaseURLs.length) {
+            alert('All servers are down. Please try again later.');
+            return;
+        }
 
-    let attendance_1 = document.getElementById('attendance_1').value;
-    let attendance_2 = document.getElementById('attendance_2').value;
-    let attendance_3 = document.getElementById('attendance_3').value;
-    let attendance_4 = document.getElementById('attendance_4').value;
+        let engagementScoreURL = getNextURL() + 'engagementScore';
+        let item_1 = document.getElementById('item_1').value;
+        let item_2 = document.getElementById('item_2').value;
+        let item_3 = document.getElementById('item_3').value;
+        let item_4 = document.getElementById('item_4').value;
 
-    let xhttp = new XMLHttpRequest();
-    
-        xhttp.onload = function () {
+        let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
+        let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
+        let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
+        let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
+
+        let attendance_1 = document.getElementById('attendance_1').value;
+        let attendance_2 = document.getElementById('attendance_2').value;
+        let attendance_3 = document.getElementById('attendance_3').value;
+        let attendance_4 = document.getElementById('attendance_4').value;
+
+        let xhttp = new XMLHttpRequest();
+        
+            xhttp.onload = function () {
+                if (xhttp.status >= 200 && xhttp.status < 300) {
+                    // Handle success here
+                    var j = JSON.parse(this.response);
+                    if (j.error) {
+                        alert(j.message); // Show the error message as an alert
+                    } else {
+                        let student_engagement_score = j.engagement_score;
+                        displayStudentEngagementScore(student_engagement_score);
+                    }
+                // This code will alert user if there is a client error, but retry if there's a server error.
+                } else if (xhttp.status >= 400 && xhttp.status < 500) {
+                    // Client errors
+                    alert('There was a problem with the request. Please check your input and try again.');
+                } else if (xhttp.status >= 500) {
+                    // Server errors
+                    tryCount++;
+                    tryRequest(); // retry with the next URL
+                }
+            };
+
+            xhttp.onerror = function() {
+                tryCount++;
+                tryRequest(); // retry with the next URL
+            };
+
+            xhttp.ontimeout = function() {
+                tryCount++;
+                tryRequest(); // retry with the next URL
+            };
+
+            xhttp.open("GET", engagementScoreURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&total_hours_1=" + total_hours_1
+            + "&item_2=" + item_2 + "&attendance_2=" + attendance_2 + "&total_hours_2=" + total_hours_2
+            + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&total_hours_3=" + total_hours_3
+            + "&item_4=" + item_4 + "&attendance_4=" + attendance_4 + "&total_hours_4=" + total_hours_4);
+            xhttp.send();
+    }
+    tryRequest();    
+}
+
+function getMaxMin()
+{
+    let tryCount = 0;
+
+    function tryRequest() {
+        if (tryCount >= proxyBaseURLs.length) {
+            alert('All servers are down. Please try again later.');
+            return;
+        }
+
+        let maxminURL = getNextURL() + 'maxmin';
+        let item_1 = document.getElementById('item_1').value
+        let item_2 = document.getElementById('item_2').value
+        let item_3 = document.getElementById('item_3').value
+        let item_4 = document.getElementById('item_4').value
+
+        let attendance_1 = document.getElementById('attendance_1').value
+        let attendance_2 = document.getElementById('attendance_2').value
+        let attendance_3 = document.getElementById('attendance_3').value
+        let attendance_4 = document.getElementById('attendance_4').value
+
+        let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
+        let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
+        let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
+        let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
+
+        let xhttp = new XMLHttpRequest();
+
+        xhttp.onload = function() {
             if (xhttp.status >= 200 && xhttp.status < 300) {
-                // Handle success here
                 var j = JSON.parse(this.response);
                 if (j.error) {
                     alert(j.message); // Show the error message as an alert
                 } else {
-                    let student_engagement_score = j.engagement_score;
-                    displayStudentEngagementScore(student_engagement_score);
+                    let max_attendance_items = j.max_items;
+                    let min_attendance_items = j.min_items;
+                    displayMaxMin(max_attendance_items, min_attendance_items);
                 }
+
             } else if (xhttp.status >= 400 && xhttp.status < 500) {
                 // Client errors
                 console.log('There was a problem with the request. Please check your input and try again.');
+            } else if (xhttp.status >= 500) {
+                // Server errors
+                tryCount++;
+                tryRequest(); // retry with the next URL
+            }
+        };
+
+        xhttp.onerror = function() {
+            tryCount++;
+            tryRequest(); // retry with the next URL
+        };
+
+        xhttp.ontimeout = function() {
+            tryCount++;
+            tryRequest(); // retry with the next URL
+        };
+
+        xhttp.open("GET",maxminURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&item_2=" + item_2 + "&attendance_2=" + attendance_2
+        + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&item_4=" + item_4 + "&attendance_4=" + attendance_4
+        + "&total_hours_1=" + total_hours_1 + "&total_hours_2=" + total_hours_2 + "&total_hours_3=" + total_hours_3 + "&total_hours_4=" + total_hours_4);
+        xhttp.send();
+    }
+    tryRequest();
+}
+
+function getSortedAttendance()
+{
+    let tryCount = 0;
+
+    function tryRequest() {
+        if (tryCount >= proxyBaseURLs.length) {
+            alert('All servers are down. Please try again later.');
+            return;
+        }
+
+        let sortedURL = getNextURL() + 'sorted';
+        let item_1 = document.getElementById('item_1').value
+        let item_2 = document.getElementById('item_2').value
+        let item_3 = document.getElementById('item_3').value
+        let item_4 = document.getElementById('item_4').value
+
+        let attendance_1 = document.getElementById('attendance_1').value
+        let attendance_2 = document.getElementById('attendance_2').value
+        let attendance_3 = document.getElementById('attendance_3').value
+        let attendance_4 = document.getElementById('attendance_4').value
+
+        let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
+        let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
+        let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
+        let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
+
+        let xhttp = new XMLHttpRequest();
+        xhttp.onload = function() {
+            if (xhttp.status >= 200 && xhttp.status < 300) {
+                var j = JSON.parse(this.response);
+                if (j.error) {
+                    alert(j.message); // Show the error message as an alert
+                } else {
+                    let sorted_attendance_returned = j.sorted_attendance;
+                    let sorted_attendance = 'Attendance sorted from highest to lowest:\r\n';
+                    for (let i = 0; i < sorted_attendance_returned.length; i++) {
+                        sorted_attendance += sorted_attendance_returned[i]['item'] + ' - ' + sorted_attendance_returned[i]['attendance'] + ' hours' + '\r\n';
+                    }
+                    displaySortedAttendance(sorted_attendance);
+                }
+            }else if (xhttp.status >= 400 && xhttp.status < 500) {
+                // Client errors
+                console.log('There was a problem with the request. Please check your input and try again.');
+            } else if (xhttp.status >= 500) {
+                // Server errors
+                tryCount++;
+                tryRequest(); // retry with the next URL
+            }
+
+        };
+
+        xhttp.onerror = function() {
+            tryCount++;
+            tryRequest(); // retry with the next URL
+        };
+        xhttp.ontimeout = function() {
+            tryCount++;
+            tryRequest(); // retry with the next URL
+        };
+
+        xhttp.open("GET",sortedURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&item_2=" + item_2 + "&attendance_2=" + attendance_2
+        + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&item_4=" + item_4 + "&attendance_4=" + attendance_4
+        + "&total_hours_1=" + total_hours_1 + "&total_hours_2=" + total_hours_2 + "&total_hours_3=" + total_hours_3 + "&total_hours_4=" + total_hours_4);
+        xhttp.send();
+    }
+    tryRequest();
+}
+
+function getTotal()
+{
+    let tryCount = 0;
+
+    function tryRequest() {
+        if (tryCount >= proxyBaseURLs.length) {
+            alert('All servers are down. Please try again later.');
+            return;
+        }
+
+        let totalHoursURL = getNextURL() + 'totalHours';
+        let item_1 = document.getElementById('item_1').value
+        let item_2 = document.getElementById('item_2').value
+        let item_3 = document.getElementById('item_3').value
+        let item_4 = document.getElementById('item_4').value
+
+        let attendance_1 = document.getElementById('attendance_1').value
+        let attendance_2 = document.getElementById('attendance_2').value
+        let attendance_3 = document.getElementById('attendance_3').value
+        let attendance_4 = document.getElementById('attendance_4').value
+
+        let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
+        let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
+        let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
+        let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
+
+        let xhttp = new XMLHttpRequest();
+        xhttp.onload = function() {
+            if (xhttp.status >= 200 && xhttp.status < 300) {
+                var j = JSON.parse(this.response);
+                if (j.error) {
+                    alert(j.message); // Show the error message as an alert
+                } else {
+                    let total_attendance = j.total_hours;
+                    displayTotal(total_attendance);
+                }
+            }else if (xhttp.status >= 400 && xhttp.status < 500) {
+                // Client errors
+                var j = JSON.parse(this.response); // Parse the response
+                alert(j.message); // Show the error message as an alert
             } else if (xhttp.status >= 500) {
                 // Server errors
                 console.log('The server encountered a problem. Please try again later.');
@@ -262,187 +518,26 @@ function getEngagementScore()
         };
 
         xhttp.onerror = function() {
-            console.log('Request failed due to a network error.');
+            tryCount++;
+            tryRequest(); // retry with the next URL
         };
-
         xhttp.ontimeout = function() {
-            console.log('Request timed out.');
+            tryCount++;
+            tryRequest(); // retry with the next URL
         };
 
-        xhttp.open("GET", engagementScoreURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&total_hours_1=" + total_hours_1
-        + "&item_2=" + item_2 + "&attendance_2=" + attendance_2 + "&total_hours_2=" + total_hours_2
-        + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&total_hours_3=" + total_hours_3
-        + "&item_4=" + item_4 + "&attendance_4=" + attendance_4 + "&total_hours_4=" + total_hours_4);
+        xhttp.open("GET",totalHoursURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&item_2=" + item_2 + "&attendance_2=" + attendance_2
+        + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&item_4=" + item_4 + "&attendance_4=" + attendance_4
+        + "&total_hours_1=" + total_hours_1 + "&total_hours_2=" + total_hours_2 + "&total_hours_3=" + total_hours_3 + "&total_hours_4=" + total_hours_4);
         xhttp.send();
-        return;
-}
-
-function getMaxMin()
-{
-    let item_1 = document.getElementById('item_1').value
-    let item_2 = document.getElementById('item_2').value
-    let item_3 = document.getElementById('item_3').value
-    let item_4 = document.getElementById('item_4').value
-
-    let attendance_1 = document.getElementById('attendance_1').value
-    let attendance_2 = document.getElementById('attendance_2').value
-    let attendance_3 = document.getElementById('attendance_3').value
-    let attendance_4 = document.getElementById('attendance_4').value
-
-    let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
-    let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
-    let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
-    let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
-
-    let xhttp = new XMLHttpRequest();
-
-    xhttp.onload = function() {
-        if (xhttp.status >= 200 && xhttp.status < 300) {
-            var j = JSON.parse(this.response);
-            if (j.error) {
-                alert(j.message); // Show the error message as an alert
-            } else {
-                let max_attendance_items = j.max_items;
-                let min_attendance_items = j.min_items;
-                displayMaxMin(max_attendance_items, min_attendance_items);
-            }
-
-        // These checks are not strictly necessary since I'm always returning 200 along with boolean error from php backend services
-        // It may be more useful to handle errors in this way if I wasn't in control of the backend
-        } else if (xhttp.status >= 400 && xhttp.status < 500) {
-            // Client errors
-            console.log('There was a problem with the request. Please check your input and try again.');
-        } else if (xhttp.status >= 500) {
-            // Server errors
-            console.log('The server encountered a problem. Please try again later.');
-        }
-    };
-
-    xhttp.onerror = function() {
-        console.log('Request failed due to a network error.');
-    };
-
-    xhttp.ontimeout = function() {
-        console.log('Request timed out.');
-    };
-
-    xhttp.open("GET",maxminURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&item_2=" + item_2 + "&attendance_2=" + attendance_2
-    + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&item_4=" + item_4 + "&attendance_4=" + attendance_4
-    + "&total_hours_1=" + total_hours_1 + "&total_hours_2=" + total_hours_2 + "&total_hours_3=" + total_hours_3 + "&total_hours_4=" + total_hours_4);
-    xhttp.send();
-    return;
-}
-
-function getSortedAttendance()
-{
-    let item_1 = document.getElementById('item_1').value
-    let item_2 = document.getElementById('item_2').value
-    let item_3 = document.getElementById('item_3').value
-    let item_4 = document.getElementById('item_4').value
-
-    let attendance_1 = document.getElementById('attendance_1').value
-    let attendance_2 = document.getElementById('attendance_2').value
-    let attendance_3 = document.getElementById('attendance_3').value
-    let attendance_4 = document.getElementById('attendance_4').value
-
-    let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
-    let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
-    let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
-    let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
-
-    let xhttp = new XMLHttpRequest();
-    xhttp.onload = function() {
-        if (xhttp.status >= 200 && xhttp.status < 300) {
-            var j = JSON.parse(this.response);
-            if (j.error) {
-                alert(j.message); // Show the error message as an alert
-            } else {
-                let sorted_attendance_returned = j.sorted_attendance;
-                let sorted_attendance = 'Attendance sorted from highest to lowest:\r\n';
-                for (let i = 0; i < sorted_attendance_returned.length; i++) {
-                    sorted_attendance += sorted_attendance_returned[i]['item'] + ' - ' + sorted_attendance_returned[i]['attendance'] + ' hours' + '\r\n';
-                }
-                displaySortedAttendance(sorted_attendance);
-            }
-        // These checks are not strictly necessary since I'm always returning 200 along with boolean error from php backend services
-        // It may be more useful to handle errors in this way if I wasn't in control of the backend
-        }else if (xhttp.status >= 400 && xhttp.status < 500) {
-            // Client errors
-            console.log('There was a problem with the request. Please check your input and try again.');
-        } else if (xhttp.status >= 500) {
-            // Server errors
-            console.log('The server encountered a problem. Please try again later.');
-        }
-
-    };
-
-    xhttp.onerror = function() {
-        console.log('Request failed due to a network error.');
-    };
-    xhttp.ontimeout = function() {
-        console.log('Request timed out.');
-    };
-
-    xhttp.open("GET",sortedURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&item_2=" + item_2 + "&attendance_2=" + attendance_2
-    + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&item_4=" + item_4 + "&attendance_4=" + attendance_4
-    + "&total_hours_1=" + total_hours_1 + "&total_hours_2=" + total_hours_2 + "&total_hours_3=" + total_hours_3 + "&total_hours_4=" + total_hours_4);
-    xhttp.send();
-    return;
-}
-
-function getTotal()
-{
-    let item_1 = document.getElementById('item_1').value
-    let item_2 = document.getElementById('item_2').value
-    let item_3 = document.getElementById('item_3').value
-    let item_4 = document.getElementById('item_4').value
-
-    let attendance_1 = document.getElementById('attendance_1').value
-    let attendance_2 = document.getElementById('attendance_2').value
-    let attendance_3 = document.getElementById('attendance_3').value
-    let attendance_4 = document.getElementById('attendance_4').value
-
-    let total_hours_1 = document.getElementById('hours_1').innerText.split(' ')[0].slice(1);
-    let total_hours_2 = document.getElementById('hours_2').innerText.split(' ')[0].slice(1);
-    let total_hours_3 = document.getElementById('hours_3').innerText.split(' ')[0].slice(1);
-    let total_hours_4 = document.getElementById('hours_4').innerText.split(' ')[0].slice(1);
-
-    let xhttp = new XMLHttpRequest();
-    xhttp.onload = function() {
-        if (xhttp.status >= 200 && xhttp.status < 300) {
-            var j = JSON.parse(this.response);
-            if (j.error) {
-                alert(j.message); // Show the error message as an alert
-            } else {
-                let total_attendance = j.total_hours;
-                displayTotal(total_attendance);
-            }
-        }else if (xhttp.status >= 400 && xhttp.status < 500) {
-            // Client errors
-            var j = JSON.parse(this.response); // Parse the response
-            alert(j.message); // Show the error message as an alert
-        } else if (xhttp.status >= 500) {
-            // Server errors
-            console.log('The server encountered a problem. Please try again later.');
-        }
-    };
-
-    xhttp.onerror = function() {
-        console.log('Request failed due to a network error.');
-    };
-    xhttp.ontimeout = function() {
-        console.log('Request timed out.');
-    };
-
-    xhttp.open("GET",totalHoursURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&item_2=" + item_2 + "&attendance_2=" + attendance_2
-    + "&item_3=" + item_3 + "&attendance_3=" + attendance_3 + "&item_4=" + item_4 + "&attendance_4=" + attendance_4
-    + "&total_hours_1=" + total_hours_1 + "&total_hours_2=" + total_hours_2 + "&total_hours_3=" + total_hours_3 + "&total_hours_4=" + total_hours_4);
-    xhttp.send();
-    return;
+    }
+    tryRequest();
 }
 
 
 </script>
+
+
 
 <style type="text/css">
 body  {
