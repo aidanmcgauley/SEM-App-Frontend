@@ -15,7 +15,7 @@ let proxyBaseURLs = ['http://127.0.0.1:3000/', 'http://127.0.0.1:3001/', 'http:/
 let currentIndex = 0;
 function getNextURL() {
   const url = proxyBaseURLs[currentIndex];
-  currentIndex = (currentIndex + 1) % proxyBaseURLs.length; // Modulo ensures it always goes back to 0
+  currentIndex = (currentIndex + 1) % proxyBaseURLs.length; // Modulo ensures it always goes back around to 0
   return url;
 }
 
