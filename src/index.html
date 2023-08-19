@@ -5,11 +5,8 @@
 
 <script type="text/javascript">
 
-// Single URL
-//let proxyBaseURL = 'http://127.0.0.1:3000/';
-
 // Multiple URL's
-let proxyBaseURLs = ['http://127.0.0.1:3000/', 'http://127.0.0.1:3001/', 'http://127.0.0.1:3002/'];
+let proxyBaseURLs = ['http://sem-reverseproxy.40058902.qpc.hal.davecutting.uk/', 'http://FAKE-PROXY.com/', 'http://sem-reverseproxy2.40058902.qpc.hal.davecutting.uk/'];
 
 // Round robin load balancing approach
 let currentIndex = 0;
@@ -95,7 +92,7 @@ function getSortedByPercentage()
 
     function tryRequest() {
         if (tryCount >= proxyBaseURLs.length) {
-            alert('All servers are down. Please try again later.');
+            alert('All proxy servers are down. Please try again later.');
             return;
         }
 
@@ -121,6 +118,7 @@ function getSortedByPercentage()
             if (xhttp.status >= 200 && xhttp.status < 300) {
                 // Handle success here
                 var j = JSON.parse(this.response);
+                console.log('Successful proxy for request:', sortedByPercentageURL);
                 console.log("Server response:", this.response);
                 if (j.error) {
                     alert(j.message); // Show the error message as an alert
@@ -143,12 +141,10 @@ function getSortedByPercentage()
         xhttp.onerror = function() {
             tryCount++;
             tryRequest(); // retry with the next URL
-            //alert('Request failed due to a network error.');
         };
         xhttp.ontimeout = function() {
             tryCount++;
             tryRequest(); // retry with the next URL
-            //alert('Request timed out.'); 
         };
 
         xhttp.open("GET", sortedByPercentageURL+"?item_1=" + item_1 + "&attendance_1=" + attendance_1 + "&total_hours_1=" + total_hours_1
@@ -170,7 +166,7 @@ function getRisk()
 
     function tryRequest() {
         if (tryCount >= proxyBaseURLs.length) {
-            alert('All servers are down. Please try again later.');
+            alert('All proxy servers are down. Please try again later.');
             return;
         }
 
@@ -197,6 +193,7 @@ function getRisk()
         let xhttp = new XMLHttpRequest();
         xhttp.onload = function() {
             if (xhttp.status >= 200 && xhttp.status < 300) {
+                console.log('Successful proxy for engagement score request:', engagementScoreURL);
                 let j = JSON.parse(xhttp.response);
                 if (j.error) {
                     alert(j.message); // Show the specific error message from the Java backend
@@ -208,6 +205,7 @@ function getRisk()
                 let xhttp2 = new XMLHttpRequest();
                 xhttp2.onload = function() {
                     if (xhttp2.status >= 200 && xhttp2.status < 300) {
+                        console.log('Successful proxy for risk request:', riskFailureURL);
                         let j2 = JSON.parse(xhttp2.response);
                         if (j2.error) {
                             alert(j2.error); // Show the specific error message from the server
@@ -274,7 +272,7 @@ function getEngagementScore()
 
     function tryRequest() {
         if (tryCount >= proxyBaseURLs.length) {
-            alert('All servers are down. Please try again later.');
+            alert('All proxy servers are down. Please try again later.');
             return;
         }
 
@@ -299,6 +297,7 @@ function getEngagementScore()
             xhttp.onload = function () {
                 if (xhttp.status >= 200 && xhttp.status < 300) {
                     // Handle success here
+                    console.log('Successful proxy for engagement score request:', engagementScoreURL);
                     var j = JSON.parse(this.response);
                     if (j.error) {
                         alert(j.message); // Show the error message as an alert
@@ -342,7 +341,7 @@ function getMaxMin()
 
     function tryRequest() {
         if (tryCount >= proxyBaseURLs.length) {
-            alert('All servers are down. Please try again later.');
+            alert('All proxy servers are down. Please try again later.');
             return;
         }
 
@@ -366,6 +365,7 @@ function getMaxMin()
 
         xhttp.onload = function() {
             if (xhttp.status >= 200 && xhttp.status < 300) {
+                console.log('Successful proxy for request:', maxminURL);
                 var j = JSON.parse(this.response);
                 if (j.error) {
                     alert(j.message); // Show the error message as an alert
@@ -409,7 +409,7 @@ function getSortedAttendance()
 
     function tryRequest() {
         if (tryCount >= proxyBaseURLs.length) {
-            alert('All servers are down. Please try again later.');
+            alert('All proxy servers are down. Please try again later.');
             return;
         }
 
@@ -432,6 +432,7 @@ function getSortedAttendance()
         let xhttp = new XMLHttpRequest();
         xhttp.onload = function() {
             if (xhttp.status >= 200 && xhttp.status < 300) {
+                console.log('Successful proxy for request:', sortedURL);
                 var j = JSON.parse(this.response);
                 if (j.error) {
                     alert(j.message); // Show the error message as an alert
@@ -477,7 +478,7 @@ function getTotal()
 
     function tryRequest() {
         if (tryCount >= proxyBaseURLs.length) {
-            alert('All servers are down. Please try again later.');
+            alert('All proxy servers are down. Please try again later.');
             return;
         }
 
@@ -500,6 +501,7 @@ function getTotal()
         let xhttp = new XMLHttpRequest();
         xhttp.onload = function() {
             if (xhttp.status >= 200 && xhttp.status < 300) {
+                console.log('Successful proxy for request:', totalHoursURL);
                 var j = JSON.parse(this.response);
                 if (j.error) {
                     alert(j.message); // Show the error message as an alert
