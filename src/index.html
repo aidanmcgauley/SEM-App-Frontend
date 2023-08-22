@@ -6,13 +6,16 @@
 <script type="text/javascript">
 
 // Multiple URL's
-let proxyBaseURLs = ['http://sem-reverseproxy.40058902.qpc.hal.davecutting.uk/', 'http://FAKE-PROXY.com/', 'http://sem-reverseproxy2.40058902.qpc.hal.davecutting.uk/'];
+let proxyBaseURLs = ['http://sem-reverseproxy.40058902.qpc.hal.davecutting.uk/', 
+                    'http://FAKE-PROXY.com/', 
+                    'http://sem-reverseproxy2.40058902.qpc.hal.davecutting.uk/'];
 
 // Round robin load balancing approach
 let currentIndex = 0;
 function getNextURL() {
   const url = proxyBaseURLs[currentIndex];
-  currentIndex = (currentIndex + 1) % proxyBaseURLs.length; // Modulo ensures it always goes back around to 0
+  // Modulo ensures it always goes back around to 0:
+  currentIndex = (currentIndex + 1) % proxyBaseURLs.length; 
   return url;
 }
 
@@ -121,13 +124,16 @@ function getSortedByPercentage()
                 console.log('Successful proxy for request:', sortedByPercentageURL);
                 console.log("Server response:", this.response);
                 if (j.error) {
-                    alert(j.message); // Show the error message as an alert
+                    // Show the error message as an alert
+                    // This error means theres a logical error in the backend.
+                    // It's different to the HTTP status codes also handled in this code block.
+                    alert(j.message); 
                 } else {
                     let sorted_by_percentage = j.sorted_by_percentage;
                     displaySortedByPercentage(sorted_by_percentage);
                 }
                 
-            // This code will alert user if there is a client error, but retry if there's a server error.
+            // This code will alert user if there is a client error, but try next url if there's a server error.
             } else if (xhttp.status >= 400 && xhttp.status < 500) {
                 // Client errors
                 alert('There was a problem with the request. Please check your input and try again.');
@@ -160,9 +166,6 @@ function getSortedByPercentage()
 function getRisk()
 {
     let tryCount = 0;
-
-    let engagementScoreURL = proxyBaseURLs[tryCount] + 'engagementScore';
-    let riskFailureURL = proxyBaseURLs[tryCount] + 'riskFailure';
 
     function tryRequest() {
         if (tryCount >= proxyBaseURLs.length) {
